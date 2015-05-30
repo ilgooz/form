@@ -46,8 +46,6 @@ func (form *Form) parse() error {
 		form.ep.Send(http.StatusBadRequest)
 	}
 
-	fmt.Println(form.schema)
-
 	return nil
 }
 
@@ -110,19 +108,27 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 
 	switch field.Type().String() {
 	case "string":
-		field.SetString(value[0])
 		if rule.Min > 0 && len(value[0]) < rule.Min {
 			form.ep.Field(rule.As, fmt.Sprintf("must be at least %d chars long", rule.Min))
+			return
 		}
 		if rule.Email && !govalidator.IsEmail(value[0]) {
 			form.ep.Field(rule.As, "not valid")
+			return
 		}
+		field.SetString(value[0])
 	case "int64":
-		i, err := strconv.ParseInt(value[0], 10, 64)
+		i, err := strconv.ParseInt(value[0], 0, 64)
 		if err != nil {
 			form.ep.Field(rule.As, "must be a number")
 		}
 		field.SetInt(i)
+	case "float32":
+		i, err := strconv.ParseFloat(value[0], 32)
+		if err != nil {
+			form.ep.Field(rule.As, "must be a number")
+		}
+		field.SetFloat(i)
 	case "bool":
 		switch value[0] {
 		case "true":

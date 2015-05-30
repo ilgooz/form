@@ -2,7 +2,6 @@ package form
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -20,17 +19,7 @@ var HTTPForm = map[string][]string{
 	"password":   []string{"12345"},
 	"active":     []string{"false"},
 	"colors":     []string{"blue", "red"},
-}
-
-type User struct {
-	FriendIds []int64
-	FamilyIds []int64
-	Date      time.Time
-	Name      string
-	Email     string
-	Password  string
-	Active    bool
-	Colors    []string
+	"point":      []string{"12.09"},
 }
 
 type CreateUserForm struct {
@@ -40,8 +29,9 @@ type CreateUserForm struct {
 	Name      string    `form:"as:name,required"`
 	Email     string    `form:"as:email,required"`
 	Password  string    `form:"as:password,min:6,required"`
-	Active    string    `form:"as:active"`
-	Colors    []string  `form:"as:color"`
+	Active    bool      `form:"as:active"`
+	Colors    []string  `form:"as:colors"`
+	Point     float32   `form:"as:point"`
 }
 
 type ErrorResponse struct {
@@ -55,30 +45,27 @@ func TestSomething(t *testing.T) {
 	assert := assert.New(t)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		createUserForm, err := Parse(new(CreateUserForm), w, r)
+		u := CreateUserForm{}
+
+		createUserForm, err := Parse(&u, w, r)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if createUserForm.HasError() {
-			return
-		}
 
-		user := User{}
-		createUserForm.ApplyTo(&user)
+		assert.Equal(createUserForm.HasError(), true)
 
 		date := time.Time{}
 		date.UnmarshalText([]byte("2015-05-28T21:00:00Z"))
 
-		assert.Equal(len(user.FamilyIds), 0)
-		assert.Equal(user.FamilyIds, []int64{3, 4})
-		assert.Equal(user.Date, date)
-		assert.Equal(user.Name, "")
-		assert.Equal(user.Email, "ilkergoktugozturk@gmail.com")
-		assert.Equal(user.Password, "")
-		assert.Equal(user.Active, true)
-		assert.Equal(user.Colors, []string{"blue", "red"})
-
-		fmt.Printf("%v", user)
+		assert.Equal(len(u.FriendIds), 0)
+		assert.Equal(u.FamilyIds, []int64{3, 4})
+		assert.Equal(u.Date, date)
+		assert.Equal(u.Name, "")
+		assert.Equal(u.Email, "ilkergoktugozturk@gmail.com")
+		assert.Equal(u.Password, "")
+		assert.Equal(u.Active, false)
+		assert.Equal(u.Colors, []string{"blue", "red"})
+		assert.Equal(u.Point, float32(12.09))
 	}))
 	defer ts.Close()
 
