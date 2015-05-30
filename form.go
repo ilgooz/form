@@ -16,18 +16,20 @@ import (
 //todo: slices
 
 type Form struct {
-	schema interface{}
-	w      http.ResponseWriter
-	r      *http.Request
-	ep     *ersp.Response
+	schema    interface{}
+	w         http.ResponseWriter
+	r         *http.Request
+	ep        *ersp.Response
+	existence map[string]bool
 }
 
 func Parse(schema interface{}, w http.ResponseWriter, r *http.Request) (*Form, error) {
 	form := &Form{
-		schema: schema,
-		w:      w,
-		r:      r,
-		ep:     ersp.New(w),
+		schema:    schema,
+		w:         w,
+		r:         r,
+		ep:        ersp.New(w),
+		existence: make(map[string]bool, 0),
 	}
 	return form, form.parse()
 }
@@ -99,6 +101,7 @@ func (form *Form) rule(s string) (Rule, error) {
 
 func (form *Form) convert(rule Rule, field reflect.Value) {
 	value, exists := form.r.Form[rule.As]
+	form.existence[rule.As] = exists
 	if rule.Required && !exists {
 		form.ep.Field(rule.As, "required")
 		return
@@ -167,6 +170,10 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 
 func (form *Form) HasError() bool {
 	return form.ep.HasError()
+}
+
+func (form *Form) Exists(s string) bool {
+	return form.existence[s]
 }
 
 func Time(ts string) (time.Time, error) {
