@@ -1,6 +1,167 @@
 package form
 
-import "time"
+import (
+	"errors"
+	"fmt"
+	"net/http"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/asaskevich/govalidator"
+	"github.com/ilgooz/ersp"
+)
+
+//todo: slices
+
+type Form struct {
+	schema interface{}
+	w      http.ResponseWriter
+	r      *http.Request
+	ep     *ersp.Response
+}
+
+func Parse(schema interface{}, w http.ResponseWriter, r *http.Request) (*Form, error) {
+	form := &Form{
+		schema: schema,
+		w:      w,
+		r:      r,
+		ep:     ersp.New(w),
+	}
+	return form, form.parse()
+}
+
+func (form *Form) parse() error {
+	if err := form.r.ParseForm(); err != nil {
+		form.ep.SendParseFormError()
+		return nil
+	}
+
+	if err := form.parseValues(); err != nil {
+		return err
+	}
+
+	if form.HasError() {
+		form.ep.Send(http.StatusBadRequest)
+	}
+
+	fmt.Println(form.schema)
+
+	return nil
+}
+
+func (form *Form) ApplyTo(out interface{}) {
+
+}
+
+type Rule struct {
+	As       string
+	Required bool
+	Min      int
+	Email    bool
+}
+
+func (form *Form) parseValues() error {
+	t := reflect.Indirect(reflect.ValueOf(form.schema)).Type()
+	for i := 0; i < t.NumField(); i++ {
+		rule, err := form.rule(t.Field(i).Tag.Get("form"))
+		if err != nil {
+			return err
+		}
+		form.convert(rule, reflect.ValueOf(form.schema).Elem().Field(i))
+	}
+	return nil
+}
+
+func (form *Form) rule(s string) (Rule, error) {
+	r := Rule{}
+	a := strings.Split(s, ",")
+	for _, c := range a {
+		b := strings.Split(c, ":")
+		switch b[0] {
+		case "as":
+			r.As = b[1]
+		case "required":
+			r.Required = true
+		case "min":
+			i, err := strconv.Atoi(b[1])
+			if err != nil {
+				return r, TagError{err}
+			}
+			r.Min = i
+		case "email":
+			r.Email = true
+		default:
+			return r, TagError{errors.New("Unknown rule: " + b[0])}
+		}
+	}
+	return r, nil
+}
+
+func (form *Form) convert(rule Rule, field reflect.Value) {
+	value, exists := form.r.Form[rule.As]
+	if rule.Required && !exists {
+		form.ep.Field(rule.As, "required")
+		return
+	}
+
+	l := len(value)
+
+	switch field.Type().String() {
+	case "string":
+		field.SetString(value[0])
+		if rule.Min > 0 && len(value[0]) < rule.Min {
+			form.ep.Field(rule.As, fmt.Sprintf("must be at least %d chars long", rule.Min))
+		}
+		if rule.Email && !govalidator.IsEmail(value[0]) {
+			form.ep.Field(rule.As, "not valid")
+		}
+	case "int64":
+		i, err := strconv.ParseInt(value[0], 10, 64)
+		if err != nil {
+			form.ep.Field(rule.As, "must be a number")
+		}
+		field.SetInt(i)
+	case "bool":
+		switch value[0] {
+		case "true":
+			field.SetBool(true)
+		case "false":
+			field.SetBool(false)
+		default:
+			form.ep.Field(rule.As, "must be true or false")
+		}
+	case "time.Time":
+		t := time.Time{}
+		err := t.UnmarshalText([]byte(value[0]))
+		if err != nil {
+			form.ep.Field(rule.As, "must be UTC")
+		}
+		field.Set(reflect.ValueOf(t))
+	case "[]int64":
+		s := reflect.MakeSlice(reflect.TypeOf([]int64{}), l, l)
+		for i, v := range value {
+			in, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				form.ep.Field(rule.As, "must be numbers")
+				return
+			}
+			s.Index(i).Set(reflect.ValueOf(in))
+		}
+		field.Set(s)
+	case "[]string":
+		s := reflect.MakeSlice(reflect.TypeOf([]string{}), l, l)
+		for i, v := range value {
+			s.Index(i).Set(reflect.ValueOf(v))
+		}
+		field.Set(s)
+	}
+}
+
+func (form *Form) HasError() bool {
+	return form.ep.HasError()
+}
 
 func Time(ts string) (time.Time, error) {
 	t := time.Time{}
