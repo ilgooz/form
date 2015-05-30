@@ -102,8 +102,10 @@ func (form *Form) rule(s string) (Rule, error) {
 func (form *Form) convert(rule Rule, field reflect.Value) {
 	value, exists := form.r.Form[rule.As]
 	form.existence[rule.As] = exists
-	if rule.Required && !exists {
-		form.ep.Field(rule.As, "required")
+	if !exists {
+		if rule.Required {
+			form.ep.Field(rule.As, "required")
+		}
 		return
 	}
 
