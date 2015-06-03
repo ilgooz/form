@@ -146,6 +146,13 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 			form.Error.Field(rule.As, "must be UTC")
 		}
 		field.Set(reflect.ValueOf(t))
+	case "*time.Time":
+		t := &time.Time{}
+		err := t.UnmarshalText([]byte(value[0]))
+		if err != nil {
+			form.Error.Field(rule.As, "must be UTC")
+		}
+		field.Set(reflect.ValueOf(t))
 	case "[]int64":
 		s := reflect.MakeSlice(reflect.TypeOf([]int64{}), l, l)
 		for i, v := range value {
