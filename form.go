@@ -56,6 +56,7 @@ type Rule struct {
 	Required bool
 	Min      int
 	Email    bool
+	Comma    bool
 }
 
 func (form *Form) parseValues() error {
@@ -88,6 +89,8 @@ func (form *Form) rule(s string) (Rule, error) {
 			r.Min = i
 		case "email":
 			r.Email = true
+		case "comma":
+			r.Comma = true
 		default:
 			return r, TagError{errors.New("Unknown rule: " + b[0])}
 		}
@@ -154,16 +157,32 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 		}
 		field.Set(reflect.ValueOf(t))
 	case "[]int64":
-		s := reflect.MakeSlice(reflect.TypeOf([]int64{}), l, l)
-		for i, v := range value {
-			in, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				form.Error.Field(rule.As, "must be numbers")
-				return
+		if rule.Comma {
+			values := strings.Split(value[0], ",")
+			l = len(values)
+			s := reflect.MakeSlice(reflect.TypeOf([]int64{}), l, l)
+			for i, v := range values {
+				val := strings.Trim(v, " ")
+				in, err := strconv.ParseInt(val, 10, 64)
+				if err != nil {
+					form.Error.Field(rule.As, "must be numbers")
+					return
+				}
+				s.Index(i).Set(reflect.ValueOf(in))
 			}
-			s.Index(i).Set(reflect.ValueOf(in))
+			field.Set(s)
+		} else {
+			s := reflect.MakeSlice(reflect.TypeOf([]int64{}), l, l)
+			for i, v := range value {
+				in, err := strconv.ParseInt(v, 10, 64)
+				if err != nil {
+					form.Error.Field(rule.As, "must be numbers")
+					return
+				}
+				s.Index(i).Set(reflect.ValueOf(in))
+			}
+			field.Set(s)
 		}
-		field.Set(s)
 	case "[]string":
 		s := reflect.MakeSlice(reflect.TypeOf([]string{}), l, l)
 		for i, v := range value {
