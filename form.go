@@ -165,7 +165,7 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 				val := strings.Trim(v, " ")
 				in, err := strconv.ParseInt(val, 10, 64)
 				if err != nil {
-					form.Error.Field(rule.As, "must be numbers")
+					form.Error.Field(rule.As, "must be comma spared numbers")
 					return
 				}
 				s.Index(i).Set(reflect.ValueOf(in))
