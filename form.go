@@ -127,6 +127,12 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 			form.Error.Field(rule.As, "must be a number")
 		}
 		field.SetInt(i)
+	case "int":
+		i, err := strconv.ParseInt(value[0], 0, 10)
+		if err != nil {
+			form.Error.Field(rule.As, "must be a number")
+		}
+		field.SetInt(i)
 	case "float32":
 		i, err := strconv.ParseFloat(value[0], 32)
 		if err != nil {
