@@ -156,12 +156,16 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 		}
 		field.Set(reflect.ValueOf(t))
 	case "*time.Time":
-		t := &time.Time{}
-		err := t.UnmarshalText([]byte(value[0]))
-		if err != nil {
-			form.Error.Field(rule.As, "must be UTC")
+		if value[0] == "" {
+			field.Set(reflect.Zero(field.Type()))
+		} else {
+			t := &time.Time{}
+			err := t.UnmarshalText([]byte(value[0]))
+			if err != nil {
+				form.Error.Field(rule.As, "must be UTC")
+			}
+			field.Set(reflect.ValueOf(t))
 		}
-		field.Set(reflect.ValueOf(t))
 	case "[]int64":
 		if rule.Comma {
 			values := strings.Split(value[0], ",")
