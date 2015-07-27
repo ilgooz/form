@@ -151,9 +151,11 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 	case "*bool":
 		switch value[0] {
 		case "true":
-			field.SetBool(true)
+			t := true
+			field.Set(reflect.ValueOf(&t))
 		case "false":
-			field.SetBool(false)
+			t := false
+			field.Set(reflect.ValueOf(&t))
 		default:
 			field.Set(reflect.Zero(field.Type()))
 			form.Error.Field(rule.As, "must be true or false")
