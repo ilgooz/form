@@ -148,6 +148,16 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 		default:
 			form.Error.Field(rule.As, "must be true or false")
 		}
+	case "*bool":
+		switch value[0] {
+		case "true":
+			field.SetBool(true)
+		case "false":
+			field.SetBool(false)
+		default:
+			field.Set(reflect.Zero(field.Type()))
+			form.Error.Field(rule.As, "must be true or false")
+		}
 	case "time.Time":
 		t := time.Time{}
 		err := t.UnmarshalText([]byte(value[0]))
