@@ -28,7 +28,7 @@ func Parse(schema interface{}, w http.ResponseWriter, r *http.Request) (*Form, e
 		schema:    schema,
 		w:         w,
 		r:         r,
-		Error:     ersp.New(w),
+		Error:     ersp.New(w, r),
 		existence: make(map[string]bool, 0),
 	}
 	return form, form.parse()
@@ -124,19 +124,19 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 	case "int64":
 		i, err := strconv.ParseInt(value[0], 0, 64)
 		if err != nil {
-			form.Error.Field(rule.As, "must be a number")
+			form.Error.Field(rule.As, ersp.MustBeANumberErr)
 		}
 		field.SetInt(i)
 	case "int":
 		i, err := strconv.ParseInt(value[0], 0, 10)
 		if err != nil {
-			form.Error.Field(rule.As, "must be a number")
+			form.Error.Field(rule.As, ersp.MustBeANumberErr)
 		}
 		field.SetInt(i)
 	case "float32":
 		i, err := strconv.ParseFloat(value[0], 32)
 		if err != nil {
-			form.Error.Field(rule.As, "must be a number")
+			form.Error.Field(rule.As, ersp.MustBeANumberErr)
 		}
 		field.SetFloat(i)
 	case "bool":
@@ -146,7 +146,7 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 		case "false":
 			field.SetBool(false)
 		default:
-			form.Error.Field(rule.As, "must be true or false")
+			form.Error.Field(rule.As, ersp.MustBeTrueOrFalseErr)
 		}
 	case "*bool":
 		switch value[0] {
@@ -158,13 +158,13 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 			field.Set(reflect.ValueOf(&t))
 		default:
 			field.Set(reflect.Zero(field.Type()))
-			form.Error.Field(rule.As, "must be true or false")
+			form.Error.Field(rule.As, ersp.MustBeTrueOrFalseErr)
 		}
 	case "time.Time":
 		t := time.Time{}
 		err := t.UnmarshalText([]byte(value[0]))
 		if err != nil {
-			form.Error.Field(rule.As, "must be UTC")
+			form.Error.Field(rule.As, ersp.MustBeUTCErr)
 		}
 		field.Set(reflect.ValueOf(t))
 	case "*time.Time":
@@ -174,7 +174,7 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 			t := &time.Time{}
 			err := t.UnmarshalText([]byte(value[0]))
 			if err != nil {
-				form.Error.Field(rule.As, "must be UTC")
+				form.Error.Field(rule.As, ersp.MustBeUTCErr)
 			}
 			field.Set(reflect.ValueOf(t))
 		}
@@ -187,7 +187,7 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 				val := strings.Trim(v, " ")
 				in, err := strconv.ParseInt(val, 10, 64)
 				if err != nil {
-					form.Error.Field(rule.As, "must be comma separated numbers")
+					form.Error.Field(rule.As, ersp.MustBeCommaSeparatedNumbersErr)
 					return
 				}
 				s.Index(i).Set(reflect.ValueOf(in))
@@ -198,7 +198,7 @@ func (form *Form) convert(rule Rule, field reflect.Value) {
 			for i, v := range value {
 				in, err := strconv.ParseInt(v, 10, 64)
 				if err != nil {
-					form.Error.Field(rule.As, "must be numbers")
+					form.Error.Field(rule.As, ersp.MustBeNumbersErr)
 					return
 				}
 				s.Index(i).Set(reflect.ValueOf(in))
